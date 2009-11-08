@@ -1,3 +1,9 @@
+# Copyright Hugh Perkins 2009
+#
+# License: Mozilla Public License v1.1
+# http://www.mozilla.org/MPL/MPL-1.1.html
+#
+
 import sys
 import os
 import subprocess

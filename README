@@ -73,3 +73,9 @@ registrylib.register('somename', someprocess)
 Lookup a process in the registry (note: synchronous):
 child = registrylib.lookup('somename')
 
+License
+-------
+
+Mozilla Public License v1.1
+http://www.mozilla.org/MPL/MPL-1.1.html
+
