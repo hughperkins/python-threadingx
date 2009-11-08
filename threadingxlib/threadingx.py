@@ -108,6 +108,15 @@ class ThreadingX(object):
       outgoingsocket.send( pickleddata )
       outgoingsocket.close()
 
+   def sendfunctioncall( self, target, functionname, args ):
+      argstosend = []
+      for arg in args:
+         if arg.__class__ == self.Proxy:
+            argstosend.append(('threadx.thread',arg.getchildport()))
+         else:
+            argstosend.append(arg)
+      self.sendbis( target, ( functionname, argstosend ) )
+
    class Proxy(object):
       def __init__(self, threadx, target ):
          self.threadx = threadx
@@ -122,7 +131,7 @@ class ThreadingX(object):
          return self.target
 
       def genericfunctionproxy( self, *args ):
-         self.threadx.sendbis( self.target, ( self.functionname, args ) )
+         self.threadx.sendfunctioncall( self.target, self.functionname, args )
 
       def __str__(self):
          return 'Proxy to ' + str( self.target )
@@ -148,7 +157,17 @@ class ThreadingX(object):
          return False # couldnt find a candidate function to run
 
       #print str(self.getme()) + " running function " + functionname + " " + str( args ) + " >>>"
-      result = functiontocall( self.getproxy(clientport), *args)
+      argstouse = []
+      for arg in args:
+         try:
+            (thistype,port) = arg
+            if thistype == 'threadx.thread':
+               argstouse.append( self.getproxy( port ) )
+            else:
+               argstouse.append( arg )
+         except:
+            argstouse.append(arg)
+      result = functiontocall( self.getproxy(clientport), *argstouse)
       if result == False:
          #print str(self.getme()) + " ... call to function " + functionname + " left in queue"
          return False

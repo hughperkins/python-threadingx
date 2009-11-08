@@ -28,8 +28,15 @@ For an example usage, please see the ping-pong example.
 Usage
 -----
 
+Installation
+------------
+
+sudo python setup.py install
+
 Initialization:
 ---------------
+
+from threadingxlib import *
 
 threadx = threadingx.ThreadingX()
 
@@ -78,4 +85,5 @@ License
 
 Mozilla Public License v1.1
 http://www.mozilla.org/MPL/MPL-1.1.html
+
 
