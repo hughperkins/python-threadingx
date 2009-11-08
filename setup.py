@@ -8,6 +8,6 @@ setup(name='threadingx',
       author='Hugh Perkins',
       author_email='hughperkins@gmail.com',
       url='http://github.com/hughperkins/python-threadingx/',
-      packages=['threadingx'],
+      packages=['threadingxlib'],
      )
 

@@ -4,30 +4,32 @@ import subprocess
 import socket
 import pickle
 
-from threadingx import threadingx, registrylib
+from threadingxlib import *
 
 class Ping():
-   def __init__(self,pong):
+   def __init__(self, threadx, pong):
+      self.threadx = threadx
       self.pong = pong
 
-   def ping( self, count ):
+   def ping( self, requester, count ):
       print 'ping ' + str( count )
       if count > 0:
-         threadingx.getproxy( self.pong ).pong( count - 1 )
+         self.pong.pong( count - 1 )
       else:
          print "Finished"
-         threadingx.getproxy( threadingx.getparent() ).finished() 
+         self.threadx.getparent().finished()
 
 def go():
-   threadingx.init()
+   threadx = threadingx.ThreadingX()
+   registry = registrylib.Registry(threadx)
 
-   registrylib.register('ping', threadingx.getme())
-   pong = registrylib.lookup('pong')
+   registry.register( 'ping', threadx.getme())
+   pong = registry.lookup( 'pong')
 
-   threadingx.register_instance(Ping(pong))
-   while threadingx.receive():
+   threadx.register_instance( Ping(threadx, pong) )
+   while threadx.receive():
       pass
-   threadingx.shutdown()
+   threadx.close()
 
 if __name__ == '__main__':
    go()

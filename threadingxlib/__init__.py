@@ -50,7 +50,7 @@ Spawn a module as a new process:
 child = threadingx.spawn('modulename')
 
 Call a function in the child:
-threadingx.getproxy(child).somefunction(arg1, arg2, ...)
+threadingx.somefunction( child, arg1, arg2, ...)
 
 Making methods available to other processes:
 --------------------------------------------

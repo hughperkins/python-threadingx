@@ -4,15 +4,16 @@ import subprocess
 import socket
 import pickle
 
-import threadingx # just use threadingx?
+from threadingxlib import *
 
 #registryport = 1313 # should be well-known to all users of registry
 
 class RegistryServer():
-   def __init__(self):
+   def __init__(self, threadx):
       self.names = {}
+      self.threadx = threadx
 
-   def register( self, name, port ):
+   def register( self, requester, name, port ):
       #print "register " + name + ' ' + str(port)
       self.names[name] = port
 
@@ -22,23 +23,23 @@ class RegistryServer():
       if self.names.has_key(name):
          reply = self.names[name]
          #print "lookup " + name + ' ' + str(reply)
-         threadingx.getproxy(requester).registryresponse( name, reply )
+         requester.registryresponse( name, reply )
       else:
          return False  # keep the message in the queue for processing later
 
-   def unregister(self, name):
+   def unregister(self, requester, name):
       self.names.remove(name)
 
 def go():
-   threadingx.init()
-   threadingx.register_instance( RegistryServer() )
+   threadx = threadingx.ThreadingX()
+   threadx.register_instance( RegistryServer(threadx) )
    alive = True
    while alive:
-      try:
-         alive = threadingx.receive()
-      except:
-         print sys.exc_info()
-   threadingx.shutdown()
+      #try:
+      alive = threadx.receive()
+      #except:
+      #   print sys.exc_info()
+   threadx.close()
 
 if __name__ == '__main__':
    go()
