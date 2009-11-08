@@ -9,6 +9,7 @@ import os
 import subprocess
 import socket
 import pickle
+from optparse import OptionParser
 
 max_pending_connections = 1000
 max_data_size = 10000
@@ -16,7 +17,7 @@ max_data_size = 10000
 scriptdir = os.path.dirname( os.path.realpath( __file__ ) )
 
 class ThreadingX(object):
-   def __init__(self, port = 0, name = ''):
+   def __init__(self, port = 0, name = '' ):
       # our listening socket
       self.mysocket = None
 
@@ -43,12 +44,17 @@ class ThreadingX(object):
 
       # if we are a child, we should see parents port on commandline
       # so we connect to the parent and tell parent our own listeninger port number
-      if len(sys.argv) > 1:
-         #print 'args: ' + str(sys.argv)
-         self.parentport = int(sys.argv[1])
-         parenttemp = int(sys.argv[2])
-         if sys.argv[3] != 'None':
-            self.registry = self.getproxy( int(sys.argv[3]) )
+      parser = OptionParser()
+      parser.add_option('--parentport', dest='parentport')
+      parser.add_option('--parenttempport', dest='parenttempport')
+      parser.add_option('--registryport', dest='registryport')      
+      (options, args ) = parser.parse_args()
+      if options.parentport != None:
+         # print 'args: ' + str(sys.argv)
+         self.parentport = int(options.parentport)
+         parenttemp = int(options.parenttempport)
+         if options.registryport != 'None':
+            self.registry = self.getproxy( int(options.registryport) )
          #print "parent: " + str(parent)
          connecttoparentsocket = socket.socket()
          connecttoparentsocket.connect(('127.0.0.1', parenttemp ))
@@ -77,7 +83,7 @@ class ThreadingX(object):
       registrystring = str(None)
       if self.registry != None:
          registrystring = str(self.registry.getchildport())
-      popen = subprocess.Popen( [ sys.executable, modulename + ".py", str( self.mysocket.getsockname()[1]), str(tempreceivesocket.getsockname()[1]), registrystring ] )
+      popen = subprocess.Popen( [ sys.executable, modulename + ".py", '--parentport=' + str( self.mysocket.getsockname()[1]), '--parenttempport=' + str(tempreceivesocket.getsockname()[1]), '--registryport=' + registrystring ] )
       self.childpopens.append(popen)
       (childconnection,temppeerinfo) = tempreceivesocket.accept()
       childport = int(childconnection.recv(100))

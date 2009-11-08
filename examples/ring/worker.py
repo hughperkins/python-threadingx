@@ -11,7 +11,7 @@ class Worker(object):
       self.nextnode = nextnode
 
    def relay( self, sender, n ):
-      print "worker: " + str(n)
+      #print "worker: " + str(n)
       self.nextnode.relay( n )
 
 threadx = threadingx.ThreadingX()

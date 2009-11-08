@@ -3,15 +3,23 @@ import os
 
 from threadingxlib import *
 
-N = 3
-M = 3
-
 class Main(object):
    def __init__(self):
       self.isfinished = False
 
    def finished( self, sender ):
       self.isfinished = True
+
+if len(sys.argv) < 3:
+   print "Usage: " + sys.argv[0] + " [M] [N]"
+   print "where: M is number of loop iterations"
+   print "       N is number of nodes in loop"
+   sys.exit(0)
+
+M = int( sys.argv[1] )
+N = int( sys.argv[2] )
+
+print "Using M=" + str(M) + " N=" + str(N)
 
 threadx = threadingx.ThreadingX()
 
