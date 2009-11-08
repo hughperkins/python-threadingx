@@ -34,12 +34,12 @@ Usage
 Initialization:
 ---------------
 
-threadingx.init()
+threadx = threadingx.ThreadingX()
 
 Shutdown:
 ---------
 
-threadingx.shutdown()
+threadx.close()
 
 This will clean up sockets and child processes
 
@@ -47,25 +47,25 @@ Starting and calling other processes:
 -------------------------------------
 
 Spawn a module as a new process:
-child = threadingx.spawn('modulename')
+child = threadx.spawn('modulename')
 
 Call a function in the child:
-threadingx.somefunction( child, arg1, arg2, ...)
+child.somefunction( arg1, arg2, ...)
 
 Making methods available to other processes:
 --------------------------------------------
 
 Register object, with methods that other processes can call:
-threadingx.register_instance(someobject)
+threadx.register_instance(someobject)
 
 Receive an incoming message:
 ----------------------------
 
-threadingx.receive()
+threadx.receive()
 
 If this returns False, the child has received a shutdown
 from its parent, and appropriate behavior is to call 
-threadingx.shutdown(), then exit.
+threadx.close(), then exit.
 
 Registry
 --------
