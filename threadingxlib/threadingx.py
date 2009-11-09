@@ -16,6 +16,14 @@ max_data_size = 10000
 
 scriptdir = os.path.dirname( os.path.realpath( __file__ ) )
 
+# used by spawn to receive the child's proxy
+class ChildRegistrationResponse(object):
+   def __init__(self ):
+      self.child = None
+
+   def setchild( self, sender, child ):  # sender and child will of course be the same, but anyway..
+      self.child = child
+
 class ThreadingX(object):
    def __init__(self, port = 0, name = '' ):
       # our listening socket
@@ -46,20 +54,14 @@ class ThreadingX(object):
       # so we connect to the parent and tell parent our own listeninger port number
       parser = OptionParser()
       parser.add_option('--parentport', dest='parentport')
-      parser.add_option('--parenttempport', dest='parenttempport')
       parser.add_option('--registryport', dest='registryport')      
       (options, args ) = parser.parse_args()
       if options.parentport != None:
-         # print 'args: ' + str(sys.argv)
-         self.parentport = int(options.parentport)
-         parenttemp = int(options.parenttempport)
          if options.registryport != 'None':
             self.registry = self.getproxy( int(options.registryport) )
-         #print "parent: " + str(parent)
-         connecttoparentsocket = socket.socket()
-         connecttoparentsocket.connect(('127.0.0.1', parenttemp ))
-         connecttoparentsocket.send(str(self.mysocket.getsockname()[1]))
-         connecttoparentsocket.close()
+
+         self.parentport = int(options.parentport)
+         self.getproxy( self.parentport ).setchild( self.getme() )
       else:
          # we are main basically, so create the registry
          self.registry = self.spawn(scriptdir + '/registryserver')
@@ -77,20 +79,21 @@ class ThreadingX(object):
    # wait for it to connect back to us telling us its port number
    # add it to childpopens and childports
    def spawn( self, modulename ):
-      tempreceivesocket = socket.socket()
-      tempreceivesocket.bind(('localhost',0))
-      tempreceivesocket.listen(1)
+      childregistrationresponse = ChildRegistrationResponse()
+      oldinstance = self.register_instance( childregistrationresponse )
+
       registrystring = str(None)
       if self.registry != None:
          registrystring = str(self.registry.getchildport())
-      popen = subprocess.Popen( [ sys.executable, modulename + ".py", '--parentport=' + str( self.mysocket.getsockname()[1]), '--parenttempport=' + str(tempreceivesocket.getsockname()[1]), '--registryport=' + registrystring ] )
+      popen = subprocess.Popen( [ sys.executable, modulename + ".py", '--parentport=' + str( self.mysocket.getsockname()[1]), '--registryport=' + registrystring ] )
       self.childpopens.append(popen)
-      (childconnection,temppeerinfo) = tempreceivesocket.accept()
-      childport = int(childconnection.recv(100))
-      self.childports.append( childport )
-      childconnection.close()
-      tempreceivesocket.close()
-      return self.getproxy( childport )
+
+      while childregistrationresponse.child == None and not self.shutdownnow:
+         self.receive()
+
+      self.register_instance( oldinstance )
+      return childregistrationresponse.child
+
 
    # returns (clientsocket, data )
    # blocks until someone connects and sends us something,
