@@ -26,25 +26,26 @@ print "Using M=" + str(M) + " N=" + str(N)
 
 threadx = threadingx.ThreadingX()
 
-previousworker = None
-firstworker = None
-for n in xrange(0, N - 1):
-   worker = threadx.spawn('worker')
-   if previousworker != None:
-      previousworker.setnextnode( worker )
-   else:
-      firstworker = worker
-   previousworker = worker
-manager = threadx.spawn('manager')
-manager.setmain( threadx.getme() )
-previousworker.setnextnode( manager )
-manager.setnextnode( firstworker )
+try:
+   previousworker = None
+   firstworker = None
+   for n in xrange(0, N - 1):
+      worker = threadx.spawn('worker')
+      if previousworker != None:
+         previousworker.setnextnode( worker )
+      else:
+         firstworker = worker
+      previousworker = worker
+   manager = threadx.spawn('manager')
+   manager.setmain( threadx.getme() )
+   previousworker.setnextnode( manager )
+   manager.setnextnode( firstworker )
 
-main = Main()
-threadx.register_instance(main)
-firstworker.relay( M )
-while not main.isfinished:
-   threadx.receive()
-
-threadx.shutdown()
+   main = Main()
+   threadx.register_instance(main)
+   firstworker.relay( M )
+   while not main.isfinished:
+      threadx.receive()
+finally:
+   threadx.shutdown()
 
