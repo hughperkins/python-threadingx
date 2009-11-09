@@ -303,24 +303,28 @@ class ThreadingX(object):
    # returns False if we should shutdown now (eg for a child process)
    # otherwise returns True, whether or not it processed anything
    def receive(self):
-      while True:
-         if self.shutdownnow:         
-            # self.debug( "receive got shutdownnow, exiting" )
-            return False
+      try:
+         while True:
+            if self.shutdownnow:         
+               # self.debug( "receive got shutdownnow, exiting" )
+               return False
 
-         # in relation to the incomingmessageevent event:
-         # - it won't cause a block here if we exit when there's still something in the queue to
-         #   to process
-         # - we must never block if there is already something in the queue to process, otherwise
-         #   we may block forever
-         # - so we should only unset the event *before* checking the queue
-         # - I think we should make sure we process one, and exactly one, function before exiting
-         #   so we either find one and process it, or wait for a message until we've found one
-         incomingmessageevent.clear()
-         if self.checkqueue(): # if returns True, we processed seomthing
-            return True
-         incomingmessageevent.wait()  # if it's already been set, this won't block here, will
-                                     # just go straight through
+            # in relation to the incomingmessageevent event:
+            # - it won't cause a block here if we exit when there's still something in the queue to
+            #   to process
+            # - we must never block if there is already something in the queue to process, otherwise
+            #   we may block forever
+            # - so we should only unset the event *before* checking the queue
+            # - I think we should make sure we process one, and exactly one, function before exiting
+            #   so we either find one and process it, or wait for a message until we've found one
+            incomingmessageevent.clear()
+            if self.checkqueue(): # if returns True, we processed seomthing
+               return True
+            while not incomingmessageevent.isSet() and not self.shutdownnow:
+               incomingmessageevent.wait(1.0)  # if it's already been set, this won't block here, will
+                                        # just go straight through
+      except KeyboardInterrupt:
+         self.shutdownnow = True
 
    # register new instance, returns old one, or None
    def register_instance( self, instance ):
