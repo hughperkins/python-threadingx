@@ -30,7 +30,7 @@ class ThreadingX(object):
    # while threadx.receive():
    #    pass
    # threadx.shutdown()
-   def __init__(self, port = 0, name = '', instance = None ):
+   def __init__(self, instance = None, port = 0, name = '' ):
       # our listening socket
       self.mysocket = None
 
