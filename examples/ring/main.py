@@ -3,13 +3,6 @@ import os
 
 from threadingxlib import *
 
-class Main(object):
-   def __init__(self):
-      self.isfinished = False
-
-   def finished( self, sender ):
-      self.isfinished = True
-
 if len(sys.argv) == 1:
    M = 100
    N = 10
@@ -24,28 +17,27 @@ else:
 
 print "Using M=" + str(M) + " N=" + str(N)
 
-threadx = threadingx.ThreadingX()
+class Main(object):
+   def oninit(self, threadx ):
+      self.threadx = threadx
+      previousworker = None
+      firstworker = None
+      for n in xrange(0, N - 1):
+         worker = self.threadx.spawn('worker')
+         if previousworker != None:
+            previousworker.setnextnode( worker )
+         else:
+            firstworker = worker
+         previousworker = worker
+      manager = self.threadx.spawn('manager')
+      manager.setmain( self.threadx.getme() )
+      previousworker.setnextnode( manager )
+      manager.setnextnode( firstworker )
 
-try:
-   previousworker = None
-   firstworker = None
-   for n in xrange(0, N - 1):
-      worker = threadx.spawn('worker')
-      if previousworker != None:
-         previousworker.setnextnode( worker )
-      else:
-         firstworker = worker
-      previousworker = worker
-   manager = threadx.spawn('manager')
-   manager.setmain( threadx.getme() )
-   previousworker.setnextnode( manager )
-   manager.setnextnode( firstworker )
+      firstworker.relay( M )
 
-   main = Main()
-   threadx.register_instance(main)
-   firstworker.relay( M )
-   while not main.isfinished:
-      threadx.receive()
-finally:
-   threadx.shutdown()
+   def finished( self, sender ):
+      self.threadx.shutdownnow()
+
+threadingx.ThreadingX( instance = Main() )
 

@@ -14,9 +14,5 @@ class Worker(object):
       #print "worker: " + str(n)
       self.nextnode.relay( n )
 
-threadx = threadingx.ThreadingX()
-threadx.register_instance(Worker())
-while threadx.receive():
-   pass
-threadx.shutdown()
+threadingx.ThreadingX( instance = Worker() )
 

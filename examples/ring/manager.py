@@ -22,9 +22,5 @@ class Manager(object):
       else:
          self.nextnode.relay( n )
 
-threadx = threadingx.ThreadingX()
-threadx.register_instance(Manager())
-while threadx.receive():
-   pass
-threadx.shutdown()
+threadingx.ThreadingX( instance = Manager() )
 
