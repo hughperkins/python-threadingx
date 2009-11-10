@@ -4,26 +4,34 @@ Performance benchmark using prime numbers
 What is this?
 -------------
 
-We calculate prime numbers using a basic sieve of Arystophenes.
+We calculate prime numbers using a basic sieve of Arystophenes.  We do this several times, in multiple processes.
 
-We do this several times, in multiple processes.
+We have one implementation using classic Python threads, and one using threadingx.
 
-We have one example where each process is a standard python thread.
+Results for eeepc 901 running Ubuntu Jaunty:
 
-We have another where each process is a threadingx process.
+> time python primesclassicthreads.py
 
-Then, we can compare the execution time.
+real	0m7.110s
+user	0m5.828s
+sys	0m2.040s
 
-On a multi-core system, using threadingx results in a faster overall execution time.
+> time python threadxprimes.py 
+
+real	0m3.626s
+user	0m6.288s
+sys	0m0.288s
+
+You can see that the user time is similar in both cases, but the elapsed time is less in threadx, nearly half, which one can suppose is because it is making use of both cores, whereas the classically-threaded example is being blocked by the global interpreter lock.
 
 To run using normal python threads:
 -----------------------------------
 
-   python threadedprimes.py
+   python primesclassicthreads.py
 
 On linux, you can do:
 
-   time python threadedprimes.py
+   time python primesclassicthreads.py
 
 ... to measure execution time
 

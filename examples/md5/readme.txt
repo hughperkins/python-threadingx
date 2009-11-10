@@ -23,3 +23,5 @@ sys	0m0.212s
 
 Eeepc has two cores, so this sounds about right.  Note that there is a slight overhead for threadx for process spawning, compared to classic threads, but then the thread runs a lot faster, since it is not blocked by the global interpreter lock.
 
+Note that whilst the user time is slightly more for threadingx - because of the process setup overhead - the real  time is nearly half.
+

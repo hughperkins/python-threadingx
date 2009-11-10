@@ -3,7 +3,7 @@ import os
 
 from threadingxlib import *
 
-num = 200000
+num = 400000
 
 class MainService:
    def oninit(self, threadx):
