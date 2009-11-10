@@ -39,6 +39,8 @@ class ThreadingX(object):
       self.childpopens = []
       self.childports = []
 
+      self.proxies = {} # dict of proxy by port number, so each proxy is unique per port number
+
       self.queue = []
 
       self.registry = None
@@ -161,7 +163,9 @@ class ThreadingX(object):
          return 'Proxy to ' + str( self.target )
 
    def getproxy(self, target ):
-      return self.Proxy( self, target )
+      if not self.proxies.has_key( target ):
+         self.proxies[ target ] = self.Proxy( self, target )
+      return self.proxies[ target ]
 
    # return true if call considered 'successful', and we can remove from queue
    # functions we are caling can return 'False' to instruct us to keep it on the queue
