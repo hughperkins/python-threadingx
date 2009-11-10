@@ -72,12 +72,14 @@ class ThreadingX(object):
          self.registry = self.spawn(scriptdir + '/registryserver')
 
       if instance != None:
-         if 'oninit' in dir( instance ):
-            instance.oninit( self )
-         self.register_instance( instance )
-         while self.receive():
-            pass
-         self.shutdown()
+         try:
+            if 'oninit' in dir( instance ):
+               instance.oninit( self )
+            self.register_instance( instance )
+            while self.receive():
+               pass
+         finally:
+            self.shutdown()
 
    def getparent(self):
       return self.getproxy( self.parentport )
