@@ -25,7 +25,12 @@ class ChildRegistrationResponse(object):
       self.child = child
 
 class ThreadingX(object):
-   def __init__(self, port = 0, name = '' ):
+   # if you pass in an object instance, this will run for you:
+   # threadx.register_instance( self )
+   # while threadx.receive():
+   #    pass
+   # threadx.shutdown()
+   def __init__(self, port = 0, name = '', instance = None ):
       # our listening socket
       self.mysocket = None
 
@@ -65,6 +70,14 @@ class ThreadingX(object):
       else:
          # we are main basically, so create the registry
          self.registry = self.spawn(scriptdir + '/registryserver')
+
+      if instance != None:
+         if 'oninit' in dir( instance ):
+            instance.oninit( self )
+         self.register_instance( instance )
+         while self.receive():
+            pass
+         self.shutdown()
 
    def getparent(self):
       return self.getproxy( self.parentport )
