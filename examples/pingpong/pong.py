@@ -7,9 +7,11 @@ import pickle
 from threadingxlib import *
 
 class Pong():
-   def __init__(self, threadx, ping):
+   def oninit( self, threadx ):
       self.threadx = threadx
-      self.ping = ping
+      registry = registrylib.Registry(self.threadx)
+      registry.register( 'pong', self.threadx.getme() )
+      self.ping = registry.lookup( 'ping')
 
    def pong( self, requester, count ):
       print 'pong ' + str( count )
@@ -19,18 +21,5 @@ class Pong():
          print "Finished"
          self.threadx.getparent().finished()
 
-def go():
-   threadx = threadingx.ThreadingX()
-   registry = registrylib.Registry(threadx)
-
-   registry.register( 'pong', threadx.getme())
-   ping = registry.lookup( 'ping')
-
-   threadx.register_instance( Pong(threadx, ping) )
-   while threadx.receive():
-      pass
-   threadx.close()
-
-if __name__ == '__main__':
-   go()
+threadingx.ThreadingX( instance = Pong() )
 
