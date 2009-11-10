@@ -49,13 +49,14 @@ class ThreadingX(object):
       self.functions = {}
       self.functionname = None
 
-      self._shutdownnow = False
+      self._shutdownnowflag = False
 
       # open a listening socket for us
       self.mysocket = socket.socket()
       self.mysocket.bind(('localhost',port))
+      self.myportnumber = self.mysocket.getsockname()[1]
       self.mysocket.listen(max_pending_connections)
-      self.register_function(self._shutdown)
+      self.register_function(self._shutdownnow)
 
       # if we are a child, we should see parents port on commandline
       # so we connect to the parent and tell parent our own listeninger port number
@@ -105,10 +106,11 @@ class ThreadingX(object):
       popen = subprocess.Popen( [ sys.executable, modulename + ".py", '--parentport=' + str( self.mysocket.getsockname()[1]), '--registryport=' + registrystring ] )
       self.childpopens.append(popen)
 
-      while childregistrationresponse.child == None and not self._shutdownnow:
+      while childregistrationresponse.child == None and not self._shutdownnowflag:
          self.receive()
 
       self.register_instance( oldinstance )
+      self.childports.append( childregistrationresponse.child.getchildport() )
       return childregistrationresponse.child
 
 
@@ -205,7 +207,7 @@ class ThreadingX(object):
    # otherwise returns True, whether or not it processed anything
    def receive(self):
       while True:
-         if self._shutdownnow:         
+         if self._shutdownnowflag:         
             return False
 
          # go through the queue looking for matches
@@ -226,21 +228,27 @@ class ThreadingX(object):
    def register_function(self, function ):
       self.functions[function.__name__] = function
 
-   def _shutdown(self, requester ):
-      #print str(getme()) + " setting _shutdownnow"
-      self._shutdownnow = True
+   def _shutdownnow(self, requester ):
+      # self.debug( "setting _shutdownnowflag" )
+      self._shutdownnowflag = True
 
    def shutdownnow(self):
-      self._shutdownnow = True
+      self._shutdownnowflag = True
+
+   def debug( self, message ):
+      print str( self.myportnumber) + ": " + message
 
    # kill all children, and close our port
    def shutdown(self):
-      #print str(getme()) + " ... shutting down ..."
+      #self.debug( " ... shutting down ..." )
       for i in range(len(self.childports)):
-         self.getproxy( self.childports[i] )._shutdown()
+         #self.debug( " ... telling child to shutdown ..." )
+         self.getproxy( self.childports[i] )._shutdownnow()
+         #self.debug( " ... waiting for child ..." )
          self.childpopens[i].wait()
       
       self.mysocket.close()
+      #self.debug( " ... shutdown finished" )
 
    def close(self):
       self.shutdown()
