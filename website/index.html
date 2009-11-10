@@ -152,17 +152,21 @@ Create a file called 'main.py', and type in the following:
 import sys
 from threadingxlib import *
 
-threadx = threadingx.ThreadingX()
+class MainService(object):
+   def oninit(self, threadx ):
+      self.threadx = threadx
 
-# step 2 goes here
+      print "Press 'enter' to exit."
+      sys.stdin.readline()
 
-print "Press 'enter' to exit."
-sys.stdin.readline()
+      self.threadx.shutdownnow()
 
-threadx.close()
+threadingx.ThreadingX(MainService())
 </pre>
 
-<p>Creating an instance of the ThreadingX class will initialize the threadingx environment, and open a listening port on an available port on your machine.</p>
+<p>Creating an instance of the ThreadingX class will initialize the threadingx environment, and open a listening port on an available port on your machine.  We pass in an instance of MainService, and threadinx will automatically run the oninit method for us.</p>
+
+<p>In the oninit method, we wait for the user to press 'enter', then we call threadx.shutdownnow(), which will cause threadingx to close all threads and exit.
 
 <p>Run the program, then press enter to exit.</p>
 
@@ -176,112 +180,94 @@ threadx.close()
 import sys
 from threadingxlib import *
 
-threadx = threadingx.ThreadingX()
-
-# child step 3 goes here
-
-while threadx.receive():
+class ChildService(object):
    pass
 
-threadx.close()
+threadx = threadingx.ThreadingX(ChildService())
 </pre>
 
 <p>This is a simple child module that will simply run, and wait for the main.py process to tell it to shut-down.</p>
 
-<p>The while loop waits for messages to arrive.  If it receives a shutdown message from the parent process, then threadx.receive() will return False, and the loop will exit.
-
-<p>In the main.py, replace the line '# step 2 goes here' with:</p>
+<p>In the main.py, replace the MainService class with:</p>
 
 <pre>
-child = threadx.spawn('child')
+class MainService(object):
+   def oninit(self, threadx ):
+      self.threadx = threadx
 
-# main step 3 goes here
+      child = self.threadx.spawn('child')
+
+      print "Press 'enter' to exit."
+      sys.stdin.readline()
+
+      self.threadx.shutdownnow()
 </pre>
 
-<p>threadx.spawn will launch the child.py module, and return a proxy object that can be used to communicate with the new child process.</p>
+<p>threadx.spawn will launch the child.py module as a new process.  child contains a reference to the child process, termed a 'proxy'.</p>
 
-<p>Run 'python main.py'.  Use 'ps -ef' in linux, or 'taskmgr.exe' in Windows to see that there are two processes running: 'python main.py' and 'python child.py'.  Press enter to shut down the main process.  Use ps -ef or taskmgr, and check that the child process has shut down too.</p>
+<p>If you want, you can verify that there are two processes running:</p>
+<ul>
+<li>Run 'python main.py', and leave running</li>
+<li>Use 'ps -ef' in linux, or 'taskmgr.exe' in Windows to see that there are two processes running: 'python main.py' and 'python child.py'.</li>
+<li>Back in the terminal, press enter to shut down the main process.</li>
+<li>Use ps -ef or taskmgr, and check that the child process has shut down too.</li>
+</ul>
 
 <h3>Communicate with a child process</h3>
 
 <p>Let's make a method in the child process, and show how easy it is to call from main.</p>
 
-<p>In main.py, replace '# main step 3 goes here' with:
+<p>In main.py, underneath 'child = threadx.spawn('child') add the following line:
 
 <pre>
-# main step 4 goes here
-
-child.sendMessage('hello from main')
+      child.sendMessage('hello from main')
 </pre>
 
 <p>That's it!  That's all we have to do do call a function in the child process!  The child object represents the child process, and we can call methods on it directly.  Technically, the child object is a 'proxy'.</p>
 
-<p>We need to create the sendMessage method in the child.  In child.py, under '# child step 3 goes here', add a class declaration with a sendMessage method:</p>
+<p>We need to create the sendMessage method in the child.  In child.py, replace the ChildService class with:</p>
 
 <pre>
 class ChildService(object):
    def sendMessage( self, sender, message ):
       print "Child received message: " + message
-
-      # child step 4 goes here
 </pre>
 
-<ul>
-<li>sendMessage has a 'self' argument as for other python class methods, and a second 'sender' argument, which represents the calling process.</li>
-<li>For now, we simply print a message to the console, so that we can see that the client received the message ok</li>
-</ul>
+<p>Now the child is ready to receive 'sendMessage' function calls from the main process!</p>
 
-<p>We need to tell threadingx to route incoming calls to our ChildService object.  We use the 'register_instance' method for this.  Underneath the above code, add in:</p>
-
-<pre>
-threadx.register_instance( ChildService() )
-</pre>
-
-<p>... now threadingx will attempt to send incoming method calls to the ChildService object.</p>
+<p>We simply print a message to the console, so that we can see that the client received the message ok</p>
 
 <p>Run 'python main.py', and you should see the message 'Child received message: hello from main' appear on the console.</p>
 <p>Press enter to shut down the processes</p>
 
 <h3>Send a reply to the main process</h3>
 
-<p>To be useful, we need a way to get the child to communicate results back to the main process.  We can do this using the same message-passing semantics we just saw, just in the other direction</p>
+<p>We'd like a way to get the child to communicate results back to the main process.  We can do this using the same function-call semantics we just saw, just in the other direction.</p>
 
-<p>In the main.py, under '# main step 4 goes here', add a class to receive the client message:</p>
+<p>For convenience, in the method on the client, an additional parameter 'sender' is always passed in.  This represents the calling process.  We can simply call method directly on this sender object.</p>
+
+<p>In the main.py, replace the MainService class with:</p>
 
 <pre>
 class MainService(object):
-   def __init__(self):
-      self.isfinished = False
+   def oninit(self, threadx ):
+      self.threadx = threadx
+      child = self.threadx.spawn('child')
 
    def finished( self, sender ):
       print 'Finished'
-      self.isfinished = True
+      self.threadx.shutdownnow()
 </pre>
 
-<p>Just underneath this, register a MainService instance with threadingx:</p>
+<p>We've added a 'finished' method for the child to call, which calls self.threadx.shutdownnow() for us, which requests threadingx to shut down cleanly.  We've removed the lines from oninit that waited for a user to press a key.</p>
 
-<pre>
-mainservice = MainService()
-threadx.register_instance( mainservice )
-</pre>
+<p>We're left with two methods:</p>
+<ul>
+<li>oninit spawns the child process</li>
+<li>finished prints 'finished' then requests threadingx to shut down cleanly</li>
+</ul>
 
-<p>Now, the main.py process is ready to receive a 'finished' message from the child.  We want the main process to listen to message from the client, then shut down when it receives the finished message, so replace:
-
-<pre>
-print "Press 'enter' to exit."
-sys.stdin.readline()
-</pre>
-
-with:
-
-<pre>
-while not mainservice.isfinished:
-   threadx.receive()
-</pre>
-
-<p>That's it!  Now when the client calls the 'finished' method, the main process will shut down.</p>
-
-<p>Let's get the child to call the finished method when it receives a message from the main process.  In child.py, underneath '# child step 4 goes here', add the line:
+<p>Let's get the child to call the finished method when it receives a message from the main process.  In child.py, at the end of the sendMessage method, add the line:
 
 <pre>
       sender.finished()
@@ -289,7 +275,7 @@ while not mainservice.isfinished:
 
 <p>Easy, right?  The sender object is a proxy object that represents the sender process, so we can simply call methods directly on it like this.</p>
 
-<p>Run 'python main.py, and the child process should state that it received a message, and then the main process should say that it is finished, and then they should both shut down automatically.</p>
+<p>Run 'python main.py, and the child process should state that it received a message, and then the main process should say that it is finished, and then they should both shut down.</p>
 
 <h2>Tutorial, part 2: using the registry process to register and lookup process names</h2>
 
@@ -326,15 +312,6 @@ while not mainservice.isfinished:
 <li>The lookup call is synchronous.  In addition, the registry server waits for the name requested to be available, before responding.</li>
 </ul>
 </ul>
-
-<a name='possibleoptimizations'><h2>Possible optimizations</h2></a>
-
-<p>Possible optimizations:</p>
-<ul>
-<li>shortcut the sockets</li>
-<li>make socket connections persistent between pairs of processes</li>
-</ul>
-
 
 </div>
 </div>
