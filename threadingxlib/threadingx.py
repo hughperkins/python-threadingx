@@ -38,7 +38,7 @@ class ThreadingX(object):
       - instance: if you pass in an object instance, 
         this will run for you:
 
-          threadx.register_instance( self )
+          threadx.register_instance( instance )
           while threadx.receive():
              pass
           threadx._shutdown()
@@ -112,9 +112,12 @@ class ThreadingX(object):
       """
       return self._getproxy( self.mysocket.getsockname()[1] )
 
-   def getregistry(self):
+   def _getregistry(self):
       """\
-      Returns a proxy to the registry process
+      Returns a proxy to the registry process.
+
+      Best to use an instance of Registry instead though, which
+      is a higher level abstraction.
       """
       return self.registry
 
@@ -245,6 +248,9 @@ class ThreadingX(object):
       current registered instance or functions, then blocks until a
       new function call arrives.
 
+      A called function that requested to be left in the queue does not
+      count as a function call that has been run.
+
       Returns False if we should shutdown now (eg for a child process)
       otherwise returns True
       """
@@ -263,9 +269,9 @@ class ThreadingX(object):
 
    def register_instance( self, instance ):
       """\
-      Registers new instance, returns old instance, or None
+      Registers new instance, returning old registered instance or None
  
-      All methods on the instance are callable by other processes
+      All methods on the instance become callable by other processes
       """
       oldinstance = self.instance
       self.instance = instance
@@ -284,7 +290,11 @@ class ThreadingX(object):
    def shutdownnow(self):
       """\
       Requests threadingx to shut down cleanly, cleaning up any child
-      processes and sockets
+      processes and sockets.
+
+      This is only useful when you passed in an instance to the __init__
+      method initially, otherwise you should call 'close' directly 
+      instead.
       """
       self._shutdownnowflag = True
 

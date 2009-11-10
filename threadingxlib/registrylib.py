@@ -43,7 +43,7 @@ class Registry(object):
       """
       registry = self._RegistryResponse()
       oldinstance = self.threadx.register_instance( registry )
-      self.threadx.getregistry().lookup( name )
+      self.threadx._getregistry().lookup( name )
       while registry.process == None:
          self.threadx.receive()
       self.threadx.register_instance(oldinstance)  # put the old instance back, if anything
@@ -55,5 +55,5 @@ class Registry(object):
 
       Asynchonous, ie returns immediately
       """
-      self.threadx.getregistry().register( name, target )
+      self.threadx._getregistry().register( name, target )
    
