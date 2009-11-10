@@ -110,6 +110,12 @@ Again, whilst the user time is slightly more for threadingx, the real time is ne
 
 <a name='faq'><h2>FAQ</h2></a>
 
+<h3>How does ThreadingX compare with Python classic threads?</h3>
+
+<p>Python classic threads are lighter-weight but are inhibited by the global interpreter lock ('GIL'), and will tend to run serially rather than in parallel even when there are multiple processor cores available.</p>
+
+<p>ThreadingX processes can run on multiple cores, without issues with the GIL</p>
+
 <h3>How does ThreadingX compare with Stackless Python?</h3>
 
 <p>Stackless Python uses 'green' threads which are multitasked within a single operating system thread.
