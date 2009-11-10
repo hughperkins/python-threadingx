@@ -4,6 +4,7 @@
 <style type='text/css'>
 body {
    background-color: #f0f0f0;
+   font-family: arial;
 }
 pre {
    background-color: #f0f0f0;
@@ -39,7 +40,93 @@ pre {
 <li>In a multi-core environment, each process can run on a different processor core</li>
 </ul>
 
-<h2>Tutorial</h2>
+<h2>Benchmarking</h2>
+
+<p>Compared with Python classic threads, threadx threads are 'heavier', use more memory (about 1MB per process), and have a longer setup time (about 100milliseconds) but can make usage of multiple cores, so once they get going they are a lot faster, up to twice the speed on a dual-core for example.</p>
+
+<h3>primes benchmark</h3>
+
+<p>Calculate prime numbers up to 400000 using a basic sieve of Arystophenes.  Do this four times, in four sub-processes.</p>
+
+<p>The benchmark is in the 'examples' directory, under 'primes'
+
+<h4>Results</h4>
+
+<p>Environment: eeepc 901, ubuntu jaunty, Intel Atom (two cores)</p>
+
+<p>Classic python threads:</p>
+<pre>
+> time python primesclassicthreads.py
+
+real	0m7.110s
+user	0m5.828s
+sys	0m2.040s
+</pre>
+
+<p>ThreadingX:</p>
+<pre>
+> time python threadxprimes.py 
+
+real	0m3.626s
+user	0m6.288s
+sys	0m0.288s
+</pre>
+
+Whilst the user time is slightly more for threadingx - because of the process setup overhead - the real time is nearly half, because threadingx can take advantage of the two available cores, and is not blocked by python's global interpreter lock.
+
+<h3>md5 benchmark</h3>
+
+<p>Four processes are created, each of which:</p>
+<ul>
+<li>create a random string of 100,000 letters</li>
+<li>return the md5 hexdigest of this string</li>
+</ul>
+
+<p>The benchmark is in the 'examples' directory, under 'md5'
+
+<h4>Results</h4>
+
+<p>Environment: eeepc 901, ubuntu jaunty, Intel Atom (two cores)</p>
+
+<p>Classic python threads:</p>
+<pre>
+> time python md5classicthreads.py 
+
+real	0m8.357s
+user	0m7.832s
+sys	0m1.268s
+</pre>
+
+<p>ThreadingX:</p>
+<pre>
+> time python threadxmd5.py 
+
+real	0m5.154s
+user	0m8.989s
+sys	0m0.212s
+</pre>
+
+Again, whilst the user time is slightly more for threadingx, the real time is nearly half.
+
+<a name='faq'><h2>FAQ</h2></a>
+
+<h3>How does ThreadingX compare with Stackless Python?</h3>
+
+<p>Stackless Python uses 'green' threads which are multitasked within a single operating system thread.
+<ul>
+<li>This means that stackless python doesn't take advantage of multiple processor cores when they are available</li>
+<li>Ultimately, the python Global Interpreter Lock ('GIL') will make it difficult to modify Stackless Python to run across multiple cores effectively</li>
+</ul>
+
+<h3>How does ThreadingX compare with Erlang?</h3>
+
+<ul>
+<li>Erlang contains OTP, a full-blown infrastructure to manage code replacement and deployment<li>
+<li>ThreadingX runs in standard Python, which means things like unicode strings are easy to handle.</li>
+<li>ThreadingX doesn't need any knowledge or use of functional programming ('FP') concepts
+</ul>
+
+<a name='tutorial'><h2>Tutorial</h2></a>
 
 <p>The tutorial is in two parts:</p>
 <ul>
@@ -212,7 +299,42 @@ while not mainservice.isfinished:
 
 &lt; To be written &gt;
 
-<p>In the meantime, you can look at the 'pingpong' example in the 'examples' directory for an example of using the registry process.</p>
+<p>In the meantime, you can look at the <a href="http://github.com/hughperkins/python-threadingx/tree/master/examples/pingpong/">'pingpong'</a> example in the 'examples' directory for an example of using the registry process.</p>
+
+
+<a name='technicaldetails'><h2>Technical Details</h2></a>
+
+<p>Each process is a full-blown Python process.  This eliminates issues with the global interpreter lock.  Communications between processes are over TCP/IP sockets.  We could look at short-cutting the sockets in the future.</p>
+
+<p>Child processes are represented by a proxy class, of class ThreadingX.Proxy.  We override the __getattr__ method, so that we can redirect incoming method calls to the child process.</p>
+
+<p>Call marshalling uses standard python pickle.</p>
+
+<p>proxy objects passed as parameters are marshalled as the port number of the process, and then re-wrapped as a proxy object on the other end.</p>
+
+<p>if the name of a called function is not found in the list of methods registered by the child, threadx holds the call in an internal queue until that method is made available</p>
+<ul>
+<li>This is somewhat analogous to the matching behavior exhibited by Erlang</li>
+</ul>
+
+<p>A new registry process is created each time a process runs which is not a child process.</p>
+<ul>
+<li>It can be accessed by the method 'getregistry()' on the threadingx object</li>
+<li>A process can be registered by calling 'register('somename', childproxyobject )'</li>
+<li>A process proxy object can be obtained by calling 'lookup('somename')' on the registry object.</li>
+<ul>
+<li>The lookup call is synchronous.  In addition, the registry server waits for the name requested to be available, before responding.</li>
+</ul>
+</ul>
+
+<a name='possibleoptimizations'><h2>Possible optimizations</h2></a>
+
+<p>Possible optimizations:</p>
+<ul>
+<li>shortcut the sockets</li>
+<li>make socket connections persistent between pairs of processes</li>
+</ul>
+
 
 </div>
 </div>
