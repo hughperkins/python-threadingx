@@ -47,7 +47,7 @@ class ThreadingX(object):
       self.functions = {}
       self.functionname = None
 
-      self.shutdownnow = False
+      self._shutdownnow = False
 
       # open a listening socket for us
       self.mysocket = socket.socket()
@@ -101,7 +101,7 @@ class ThreadingX(object):
       popen = subprocess.Popen( [ sys.executable, modulename + ".py", '--parentport=' + str( self.mysocket.getsockname()[1]), '--registryport=' + registrystring ] )
       self.childpopens.append(popen)
 
-      while childregistrationresponse.child == None and not self.shutdownnow:
+      while childregistrationresponse.child == None and not self._shutdownnow:
          self.receive()
 
       self.register_instance( oldinstance )
@@ -199,7 +199,7 @@ class ThreadingX(object):
    # otherwise returns True, whether or not it processed anything
    def receive(self):
       while True:
-         if self.shutdownnow:         
+         if self._shutdownnow:         
             return False
 
          # go through the queue looking for matches
@@ -221,8 +221,11 @@ class ThreadingX(object):
       self.functions[function.__name__] = function
 
    def _shutdown(self, requester ):
-      #print str(getme()) + " setting shutdownnow"
-      self.shutdownnow = True
+      #print str(getme()) + " setting _shutdownnow"
+      self._shutdownnow = True
+
+   def shutdownnow(self):
+      self._shutdownnow = True
 
    # kill all children, and close our port
    def shutdown(self):
