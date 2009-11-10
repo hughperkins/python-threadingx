@@ -1,0 +1,222 @@
+<html>
+<head>
+<title>Python ThreadingX</title>
+<style type='text/css'>
+body {
+   background-color: #f0f0f0;
+}
+pre {
+   background-color: #f0f0f0;
+   padding: 20px;
+   margin: 10px;
+}
+.div1 {
+   background-color: #c0c0c0;
+   margin: 20px;
+   padding: 10px;
+}
+.div2 {
+   background-color: white;
+   margin: 10px;
+   padding: 30px;
+}
+</style>
+</head>
+<body>
+<div class='div1'>
+<div class='div2'>
+<h1>Python ThreadingX</h1>
+
+<h2>What is Python ThreadingX?</h2>
+
+<p>Python ThreadingX aims to make it easy to write multi-threaded applications in Python, which can run across multiple cores, and avoid issues with the Global Interpreter Lock ("GIL")</p>
+
+<p>Specifically:</p>
+<ul>
+<li>Easy to launch a module as a new process</li>
+<li>Easy to communicate with the new process using simple function call symantics</li>
+<li>Runs in standard Python</li>
+<li>In a multi-core environment, each process can run on a different processor core</li>
+</ul>
+
+<h2>Tutorial</h2>
+
+<p>The tutorial is in two parts:</p>
+<ul>
+<li>Tutorial part 1: installation, spawn a process, and communicate with it</li>
+<li>Tutorial part 2: use the registry process to register and look up process names</li>
+</ul>
+
+<h2>Tutorial, part 1: installation, spawn a process, and communicate with it</h2>
+
+<h3>Installation</h3>
+
+<ul>
+<li>Download from <a href="http://github.com/hughperkins/python-threadingx/archives/master">python-threadingx</a></li>
+<li>Uncompress using tar or unzip</li>
+<li>Run 'sudo python setup.py install'</li>
+</ul>
+
+<h3>Initializing threadingx</h3>
+
+Create a file called 'main.py', and type in the following:
+
+<pre>
+import sys
+from threadingxlib import *
+
+threadx = threadingx.ThreadingX()
+
+# step 2 goes here
+
+print "Press 'enter' to exit."
+sys.stdin.readline()
+
+threadx.close()
+</pre>
+
+<p>Creating an instance of the ThreadingX class will initialize the threadingx environment, and open a listening port on an available port on your machine.</p>
+
+<p>Run the program, then press enter to exit.</p>
+
+<p>If you are on linux, before pressing enter, you can do 'lsof -i -n -P' to see the port opened by the python process.  On Windows you can use <a href="http://technet.microsoft.com/en-us/sysinternals/bb897437.aspx">tcpview</a></p>
+
+<h3>Spawn a child process</h3>
+
+<p>Let's create a child process.  First we need to create a module for the child process.  Let's create a new text file called 'child.py', in the same directory as 'main.py'.  Type the followinig into child.py:</p>
+
+<pre>
+import sys
+from threadingxlib import *
+
+threadx = threadingx.ThreadingX()
+
+# child step 3 goes here
+
+while threadx.receive():
+   pass
+
+threadx.close()
+</pre>
+
+<p>This is a simple child module that will simply run, and wait for the main.py process to tell it to shut-down.</p>
+
+<p>The while loop waits for messages to arrive.  If it receives a shutdown message from the parent process, then threadx.receive() will return False, and the loop will exit.
+
+<p>In the main.py, replace the line '# step 2 goes here' with:</p>
+
+<pre>
+child = threadx.spawn('child')
+
+# main step 3 goes here
+</pre>
+
+<p>threadx.spawn will launch the child.py module, and return a proxy object that can be used to communicate with the new child process.</p>
+
+<p>Run 'python main.py'.  Use 'ps -ef' in linux, or 'taskmgr.exe' in Windows to see that there are two processes running: 'python main.py' and 'python child.py'.  Press enter to shut down the main process.  Use ps -ef or taskmgr, and check that the child process has shut down too.</p>
+
+<h3>Communicate with a child process</h3>
+
+<p>Let's make a method in the child process, and show how easy it is to call from main.</p>
+
+<p>In main.py, replace '# main step 3 goes here' with:
+
+<pre>
+# main step 4 goes here
+
+child.sendMessage('hello from main')
+</pre>
+
+<p>That's it!  That's all we have to do do call a function in the child process!  The child object represents the child process, and we can call methods on it directly.  Technically, the child object is a 'proxy'.</p>
+
+<p>We need to create the sendMessage method in the child.  In child.py, under '# child step 3 goes here', add a class declaration with a sendMessage method:</p>
+
+<pre>
+class ChildService(object):
+   def sendMessage( self, sender, message ):
+      print "Child received message: " + message
+
+      # child step 4 goes here
+</pre>
+
+<ul>
+<li>sendMessage has a 'self' argument as for other python class methods, and a second 'sender' argument, which represents the calling process.</li>
+<li>For now, we simply print a message to the console, so that we can see that the client received the message ok</li>
+</ul>
+
+<p>We need to tell threadingx to route incoming calls to our ChildService object.  We use the 'register_instance' method for this.  Underneath the above code, add in:</p>
+
+<pre>
+threadx.register_instance( ChildService() )
+</pre>
+
+<p>... now threadingx will attempt to send incoming method calls to the ChildService object.</p>
+
+<p>Run 'python main.py', and you should see the message 'Child received message: hello from main' appear on the console.</p>
+<p>Press enter to shut down the processes</p>
+
+<h3>Send a reply to the main process</h3>
+
+<p>To be useful, we need a way to get the child to communicate results back to the main process.  We can do this using the same message-passing semantics we just saw, just in the other direction</p>
+
+<p>In the main.py, under '# main step 4 goes here', add a class to receive the client message:</p>
+
+<pre>
+class MainService(object):
+   def __init__(self):
+      self.isfinished = False
+
+   def finished( self, sender ):
+      print 'Finished'
+      self.isfinished = True
+</pre>
+
+<p>Just underneath this, register a MainService instance with threadingx:</p>
+
+<pre>
+mainservice = MainService()
+threadx.register_instance( mainservice )
+</pre>
+
+<p>Now, the main.py process is ready to receive a 'finished' message from the child.  We want the main process to listen to message from the client, then shut down when it receives the finished message, so replace:
+
+<pre>
+print "Press 'enter' to exit."
+sys.stdin.readline()
+</pre>
+
+with:
+
+<pre>
+while not mainservice.isfinished:
+   threadx.receive()
+</pre>
+
+<p>That's it!  Now when the client calls the 'finished' method, the main process will shut down.</p>
+
+<p>Let's get the child to call the finished method when it receives a message from the main process.  In child.py, underneath '# child step 4 goes here', add the line:
+
+<pre>
+      sender.finished()
+</pre>
+
+<p>Easy, right?  The sender object is a proxy object that represents the sender process, so we can simply call methods directly on it like this.</p>
+
+<p>Run 'python main.py, and the child process should state that it received a message, and then the main process should say that it is finished, and then they should both shut down automatically.</p>
+
+<h2>Tutorial, part 2: using the registry process to register and lookup process names</h2>
+
+<p>In part 1 we looked at spawning a child process and communicating it.  What do we do if there are lots of child processes and they want to communicate with each other?</p>
+
+<p>One possibility is to use the 'registry' process, which lets a process register a name and a process object.</p>
+
+&lt; To be written &gt;
+
+<p>In the meantime, you can look at the 'pingpong' example in the 'examples' directory for an example of using the registry process.</p>
+
+</div>
+</div>
+</body>
+</html>
+
+
