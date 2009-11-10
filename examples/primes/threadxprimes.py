@@ -3,28 +3,22 @@ import os
 
 from threadingxlib import *
 
-import primes
-
 num = 200000
 
 class MainService:
-   def __init__(self):
-      self.isfinished = False
+   def oninit(self, threadx):
+      self.threadx = threadx
+      self.children = []
+      for i in range(4):
+         child = self.threadx.spawn('threadxprimechild')
+         child.go( num )
+         self.children.append(child)
 
-   def finished( self, sender ):
-      self.isfinished = True
+   def finished( self, sender, numprimes ):
+      print numprimes
+      self.children.remove( sender )
+      if len( self.children ) == 0:
+         self.threadx.shutdownnow()
 
-def go():
-   threadx = threadingx.ThreadingX()
-   for i in range(4):
-      child = threadx.spawn('threadxprimechild')
-      child.go( num )
-   mainservice = MainService()
-   threadx.register_instance(mainservice)
-   while not mainservice.isfinished and threadx.receive():
-      pass
-   threadx.shutdown()
-
-if __name__ == '__main__':
-   go()
+threadingx.ThreadingX( MainService() )
 

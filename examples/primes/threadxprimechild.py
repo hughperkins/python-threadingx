@@ -7,16 +7,8 @@ import primes
 
 class PrimeChild(object):
    def go(self,sender,num):
-      print len( primes.getprimes(num) )
-      sender.finished()
+      sender.finished( len(primes.getprimes(num) ) )
 
-def go():
-   threadx = threadingx.ThreadingX()
-   threadx.register_instance(PrimeChild())
-   while threadx.receive():
-      pass
-   threadx.shutdown()
+threadingx.ThreadingX( PrimeChild() )
 
-if __name__ == '__main__':
-   go()
 
