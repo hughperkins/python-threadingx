@@ -114,8 +114,6 @@ Again, whilst the user time is slightly more for threadingx, the real time is ne
 
 <p>Python classic threads are lighter-weight but are inhibited by the global interpreter lock ('GIL'), and will tend to run serially rather than in parallel even when there are multiple processor cores available.</p>
 
-<p>ThreadingX processes can run on multiple cores, without issues with the GIL</p>
-
 <h3>How does ThreadingX compare with Stackless Python?</h3>
 
 <p>Stackless Python uses 'green' threads which are multitasked within a single operating system thread.
@@ -170,7 +168,7 @@ class MainService(object):
 threadingx.ThreadingX(MainService())
 </pre>
 
-<p>Creating an instance of the ThreadingX class will initialize the threadingx environment, and open a listening port on an available port on your machine.  We pass in an instance of MainService, and threadinx will automatically run the oninit method for us.</p>
+<p>Creating an instance of the ThreadingX class will initialize the threadingx environment, and open a listening port on an available port on your machine.  We pass in an instance of MainService, and threadingx will automatically run the oninit method for us.</p>
 
 <p>In the oninit method, we wait for the user to press 'enter', then we call threadx.shutdownnow(), which will cause threadingx to close all threads and exit.
 
@@ -180,7 +178,7 @@ threadingx.ThreadingX(MainService())
 
 <h3>Spawn a child process</h3>
 
-<p>Let's create a child process.  First we need to create a module for the child process.  Let's create a new text file called 'child.py', in the same directory as 'main.py'.  Type the followinig into child.py:</p>
+<p>Let's create a child process.  First we need to create a module for the child process.  Let's create a new text file called 'child.py', in the same directory as 'main.py'.  Type the following into child.py:</p>
 
 <pre>
 import sys
@@ -194,24 +192,15 @@ threadx = threadingx.ThreadingX(ChildService())
 
 <p>This is a simple child module that will simply run, and wait for the main.py process to tell it to shut-down.</p>
 
-<p>In the main.py, replace the MainService class with:</p>
+<p>In the main.py, just before the line 'print "Press 'enter' to exit'."', add the following line:</p>
 
 <pre>
-class MainService(object):
-   def oninit(self, threadx ):
-      self.threadx = threadx
-
       child = self.threadx.spawn('child')
-
-      print "Press 'enter' to exit."
-      sys.stdin.readline()
-
-      self.threadx.shutdownnow()
 </pre>
 
-<p>threadx.spawn will launch the child.py module as a new process.  child contains a reference to the child process, termed a 'proxy'.</p>
+<p>threadx.spawn will launch the child.py module as a new process.  The returned child object contains a reference to the child process, termed a 'proxy'.</p>
 
-<p>If you want, you can verify that there are two processes running:</p>
+<p>You can run the application as before, by running 'python main.py'.  If you want, you can verify that there are two processes running:</p>
 <ul>
 <li>Run 'python main.py', and leave running</li>
 <li>Use 'ps -ef' in linux, or 'taskmgr.exe' in Windows to see that there are two processes running: 'python main.py' and 'python child.py'.</li>
@@ -252,7 +241,15 @@ class ChildService(object):
 
 <p>For convenience, in the method on the client, an additional parameter 'sender' is always passed in.  This represents the calling process.  We can simply call method directly on this sender object.</p>
 
-<p>In the main.py, replace the MainService class with:</p>
+<p>Let's get the child to call the finished method when it receives a message from the main process.  In child.py, at the end of the sendMessage method, simply add the line:
+
+<pre>
+      sender.finished()
+</pre>
+
+<p>Easy, right?  The 'sender' object is a proxy object that represents the sender process, so we can simply call methods directly on it like this.</p>
+
+<p>Let's add the 'finished' method to the main module, for the child to call.  In the main.py, replace the MainService class with:</p>
 
 <pre>
 class MainService(object):
@@ -265,21 +262,13 @@ class MainService(object):
       self.threadx.shutdownnow()
 </pre>
 
-<p>We've added a 'finished' method for the child to call, which calls self.threadx.shutdownnow() for us, which requests threadingx to shut down cleanly.  We've removed the lines from oninit that waited for a user to press a key.</p>
+<p>We've added a 'finished' method for the child to call, which calls self.threadx.shutdownnow() for us.  shutdownnow() requests threadingx to shut down cleanly.  We've removed the lines from oninit that waited for a user to press a key.</p>
 
 <p>We're left with two methods:</p>
 <ul>
 <li>oninit spawns the child process</li>
 <li>finished prints 'finished' then requests threadingx to shut down cleanly</li>
 </ul>
-
-<p>Let's get the child to call the finished method when it receives a message from the main process.  In child.py, at the end of the sendMessage method, add the line:
-
-<pre>
-      sender.finished()
-</pre>
-
-<p>Easy, right?  The sender object is a proxy object that represents the sender process, so we can simply call methods directly on it like this.</p>
 
 <p>Run 'python main.py, and the child process should state that it received a message, and then the main process should say that it is finished, and then they should both shut down.</p>
 

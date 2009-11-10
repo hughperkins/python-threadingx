@@ -1,8 +1,11 @@
-# Copyright Hugh Perkins 2009
-#
-# License: Mozilla Public License v1.1
-# http://www.mozilla.org/MPL/MPL-1.1.html
-#
+"""\
+Copyright Hugh Perkins 2009
+
+License: Mozilla Public License v1.1
+http://www.mozilla.org/MPL/MPL-1.1.html
+
+Please see http://manageddreams.com/python-threadingx for documentation and tutorial
+"""
 
 import sys
 import os
@@ -17,7 +20,7 @@ max_data_size = 10000
 scriptdir = os.path.dirname( os.path.realpath( __file__ ) )
 
 # used by spawn to receive the child's proxy
-class ChildRegistrationResponse(object):
+class _ChildRegistrationResponse(object):
    def __init__(self ):
       self.child = None
 
@@ -25,12 +28,21 @@ class ChildRegistrationResponse(object):
       self.child = child
 
 class ThreadingX(object):
-   # if you pass in an object instance, this will run for you:
-   # threadx.register_instance( self )
-   # while threadx.receive():
-   #    pass
-   # threadx.shutdown()
    def __init__(self, instance = None, port = 0, name = '' ):
+      """\
+      parameters:
+
+      - port: the port to listen to other processes on,
+        or zero to pick any available port
+
+      - instance: if you pass in an object instance, 
+        this will run for you:
+
+          threadx.register_instance( self )
+          while threadx.receive():
+             pass
+          threadx._shutdown()
+      """
       # our listening socket
       self.mysocket = None
 
@@ -66,10 +78,10 @@ class ThreadingX(object):
       (options, args ) = parser.parse_args()
       if options.parentport != None:
          if options.registryport != 'None':
-            self.registry = self.getproxy( int(options.registryport) )
+            self.registry = self._getproxy( int(options.registryport) )
 
          self.parentport = int(options.parentport)
-         self.getproxy( self.parentport ).setchild( self.getme() )
+         self._getproxy( self.parentport ).setchild( self.getme() )
       else:
          # we are main basically, so create the registry
          self.registry = self.spawn(scriptdir + '/registryserver')
@@ -82,22 +94,40 @@ class ThreadingX(object):
             while self.receive():
                pass
          finally:
-            self.shutdown()
+            self._shutdown()
 
    def getparent(self):
-      return self.getproxy( self.parentport )
+      """\
+      For children, returns a proxy representing the parent process, 
+      otherwise None
+      """
+      if self.parentport != None:
+         return self._getproxy( self.parentport )
+      return None
 
    def getme(self):
-      return self.getproxy( self.mysocket.getsockname()[1] )
+      """\
+      Returns a proxy representing the current process.
+      Can be sent through method calls to other processes.
+      """
+      return self._getproxy( self.mysocket.getsockname()[1] )
 
    def getregistry(self):
+      """\
+      Returns a proxy to the registry process
+      """
       return self.registry
 
-   # run modulename using python, passing in our socket port number as a commandline parameter
-   # wait for it to connect back to us telling us its port number
-   # add it to childpopens and childports
    def spawn( self, modulename ):
-      childregistrationresponse = ChildRegistrationResponse()
+      """\
+      Run modulename using python as a child process
+
+      Returns a proxy object representing the child object, on which
+      methods can be called.
+      """
+      # wait for it to connect back to us telling us its port number
+      # add it to childpopens and childports
+      childregistrationresponse = _ChildRegistrationResponse()
       oldinstance = self.register_instance( childregistrationresponse )
 
       registrystring = str(None)
@@ -117,7 +147,7 @@ class ThreadingX(object):
    # returns (clientsocket, data )
    # blocks until someone connects and sends us something,
    # which we then add to the queue
-   def enqueuenextmessage(self):
+   def _enqueuenextmessage(self):
       (clientsocket,info) = self.mysocket.accept()
       data = clientsocket.recv(max_data_size)
       clientsocket.close()
@@ -127,7 +157,7 @@ class ThreadingX(object):
       #print str(self.getme()) + ' queued ' + str(dataobject )
 
    # creates a new port and a new connection to target, sends the data, then closes the port
-   def sendbis( self, target, data ):
+   def _sendbis( self, target, data ):
       #print str(self.getme()) + " sending " + str(data) + ' to ' + str(target)
       pickleddata = data
       pickleddata = pickle.dumps( ( self.mysocket.getsockname()[1], data ) )
@@ -136,16 +166,16 @@ class ThreadingX(object):
       outgoingsocket.send( pickleddata )
       outgoingsocket.close()
 
-   def sendfunctioncall( self, target, functionname, args ):
+   def _sendfunctioncall( self, target, functionname, args ):
       argstosend = []
       for arg in args:
-         if arg.__class__ == self.Proxy:
+         if arg.__class__ == self._Proxy:
             argstosend.append(('threadx.thread',arg.getchildport()))
          else:
             argstosend.append(arg)
-      self.sendbis( target, ( functionname, argstosend ) )
+      self._sendbis( target, ( functionname, argstosend ) )
 
-   class Proxy(object):
+   class _Proxy(object):
       def __init__(self, threadx, target ):
          self.threadx = threadx
          self.target = target
@@ -153,25 +183,29 @@ class ThreadingX(object):
 
       def __getattr__(self, name ):
          self.functionname = name  # not very thread-safe I know ;-)
-         return self.genericfunctionproxy
+         return self._genericfunctionproxy
 
       def getchildport(self):
          return self.target
 
-      def genericfunctionproxy( self, *args ):
-         self.threadx.sendfunctioncall( self.target, self.functionname, args )
+      def _genericfunctionproxy( self, *args ):
+         self.threadx._sendfunctioncall( self.target, self.functionname, args )
 
       def __str__(self):
-         return 'Proxy to ' + str( self.target )
+         return '_Proxy to ' + str( self.target )
 
-   def getproxy(self, target ):
+   def _getproxy(self, target ):
+      """\
+      returns a proxy object for the target 'target' (currently, a port 
+      number)
+      """
       if not self.proxies.has_key( target ):
-         self.proxies[ target ] = self.Proxy( self, target )
+         self.proxies[ target ] = self._Proxy( self, target )
       return self.proxies[ target ]
 
    # return true if call considered 'successful', and we can remove from queue
    # functions we are caling can return 'False' to instruct us to keep it on the queue
-   def trycalling( self, queueitem ):
+   def _trycalling( self, queueitem ):
       (clientport,data) = queueitem
       (functionname,args) = data
       functiontocall = None
@@ -192,66 +226,89 @@ class ThreadingX(object):
          try:
             (thistype,port) = arg
             if thistype == 'threadx.thread':
-               argstouse.append( self.getproxy( port ) )
+               argstouse.append( self._getproxy( port ) )
             else:
                argstouse.append( arg )
          except:
             argstouse.append(arg)
-      result = functiontocall( self.getproxy(clientport), *argstouse)
+      result = functiontocall( self._getproxy(clientport), *argstouse)
       if result == False:
          #print str(self.getme()) + " ... call to function " + functionname + " left in queue"
          return False
       return True
 
-   # returns False if we should shutdown now (eg for a child process)
-   # otherwise returns True, whether or not it processed anything
    def receive(self):
+      """\
+      Runs one, and only one, function call in the queue, then returns.
+
+      If there are no function calls in the queue that match the 
+      current registered instance or functions, then blocks until a
+      new function call arrives.
+
+      Returns False if we should shutdown now (eg for a child process)
+      otherwise returns True
+      """
       while True:
          if self._shutdownnowflag:         
             return False
 
          # go through the queue looking for matches
          for (queueitem) in self.queue:
-            if self.trycalling( queueitem ):
+            if self._trycalling( queueitem ):
                self.queue.remove( queueitem )
                return True
 
          # if didn't find one, wait for new message, and try again
-         self.enqueuenextmessage()
+         self._enqueuenextmessage()
 
-   # register new instance, returns old one, or None
    def register_instance( self, instance ):
+      """\
+      Registers new instance, returns old instance, or None
+ 
+      All methods on the instance are callable by other processes
+      """
       oldinstance = self.instance
       self.instance = instance
       return oldinstance
 
    def register_function(self, function ):
+      """\
+      Registers a function that can be called by other processes
+      """
       self.functions[function.__name__] = function
 
    def _shutdownnow(self, requester ):
-      # self.debug( "setting _shutdownnowflag" )
+      # self._debug( "setting _shutdownnowflag" )
       self._shutdownnowflag = True
 
    def shutdownnow(self):
+      """\
+      Requests threadingx to shut down cleanly, cleaning up any child
+      processes and sockets
+      """
       self._shutdownnowflag = True
 
-   def debug( self, message ):
+   def _debug( self, message ):
       print str( self.myportnumber) + ": " + message
 
    # kill all children, and close our port
-   def shutdown(self):
-      #self.debug( " ... shutting down ..." )
+   def _shutdown(self):
+      #self._debug( " ... shutting down ..." )
       for i in range(len(self.childports)):
-         #self.debug( " ... telling child to shutdown ..." )
-         self.getproxy( self.childports[i] )._shutdownnow()
-         #self.debug( " ... waiting for child ..." )
+         #self._debug( " ... telling child to shutdown ..." )
+         self._getproxy( self.childports[i] )._shutdownnow()
+         #self._debug( " ... waiting for child ..." )
          self.childpopens[i].wait()
       
       self.mysocket.close()
-      #self.debug( " ... shutdown finished" )
+      #self._debug( " ... shutdown finished" )
 
    def close(self):
-      self.shutdown()
+      """\
+      Immediately shutdown threadingx, including child processes and 
+      sockets
+      """
+      self._shutdown()
 
 
 

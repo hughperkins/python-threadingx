@@ -19,9 +19,9 @@ class RegistryServer():
       self.names = {}
       self.threadx = threadx
 
-   def register( self, requester, name, port ):
+   def register( self, requester, name, process ):
       #print "register " + name + ' ' + str(port)
-      self.names[name] = port
+      self.names[name] = process
 
    # returns port
    def lookup( self, requester, name ):
